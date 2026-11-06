@@ -103,11 +103,12 @@ h1.pt{font:600 34px/1.3 var(--hd);color:#fff;margin:8px 0 18px;letter-spacing:.3
 .empty{color:var(--mut);padding:40px 0;text-align:center}
 
 /* home */
-.hero{position:relative;margin:0 -20px;min-height:430px;display:flex;align-items:flex-end;overflow:hidden;border-bottom:1px solid var(--line)}
-.hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.55}
-.hero:after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 30% 20%,rgba(196,33,61,.25),transparent 60%),linear-gradient(to bottom,rgba(11,11,15,0) 30%,var(--bg))}
+.hero{position:relative;margin:0 -20px;min-height:520px;display:flex;align-items:flex-end;overflow:hidden;border-bottom:1px solid var(--line)}
+.hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 40%}
+.hero:after{content:"";position:absolute;inset:0;background:linear-gradient(to bottom,rgba(11,11,15,0) 55%,var(--bg))}
 .hero .in{position:relative;z-index:2;padding:40px 20px 34px;max-width:1240px;margin:0 auto;width:100%}
-.hero h1{font:700 56px/1.05 var(--hd);color:#fff;letter-spacing:2px;text-shadow:0 6px 30px rgba(0,0,0,.7)}
+.hero h1{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.hero .in{text-align:center}.hero p{margin-left:auto;margin-right:auto;text-shadow:0 2px 12px rgba(0,0,0,.9)}.hero .cta{justify-content:center}
 .hero h1 span{color:var(--acc)}
 .hero p{font-size:18px;color:#ddd;margin-top:10px;max-width:640px}
 .hero .cta{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap}
@@ -153,7 +154,7 @@ footer a{color:var(--mut)}
   .banner,.hero,.ph{margin-left:-16px;margin-right:-16px}.ph{padding:0 16px}
   .logo{font-size:16px}.logo span{display:none}
   .srch input{width:120px}
-  .hero{min-height:340px}.hero h1{font-size:36px}.hero p{font-size:16px}
+  .hero{min-height:380px}.hero img{object-position:center 30%}.hero p{font-size:15px}
   .banner{height:170px}.banner h1{font-size:28px;left:16px}
   h1.pt{font-size:26px}
   .split{grid-template-columns:1fr;gap:16px}
@@ -192,13 +193,14 @@ const EMO=new RegExp('^(\\p{Extended_Pictographic}['+String.fromCharCode(0xFE0F,
 const emo=t=>{const m=t.match(EMO);return m?[m[1],m[2]]:['',t]};
 const go=p=>{location.hash='#'+p};
 const im=(s,cls='',alt='')=>s?`<img src="${s[0]}" width="${s[1]}" height="${s[2]}" loading="lazy" decoding="async" alt="${esc(alt)}"${cls?` class="${cls}"`:''}>`:'';
-const title=p=>D.pages[p]?.title||(p==='/ค้นหา'?'ค้นหา':p.split('/').pop());
+const title=p=>RENAME[p]||D.pages[p]?.title||(p==='/ค้นหา'?'ค้นหา':p.split('/').pop());
 const isExt=h=>/^https?:/.test(h);
+const RENAME={'/เสนเวลา-เหตการณ':'แผนเรื่องใหม่'};
 
 function navHTML(){
   return D.nav.map(n=>{
     const [e,t]=emo(n.t);const kids=n.c.filter(c=>!c.p.startsWith('/กลม-องคกร/'));
-    if(n.p==='/เสนเวลา-เหตการณ')return `<a href="#${n.p}" data-p="${n.p}">${t}</a>`;
+    if(n.p==='/เสนเวลา-เหตการณ')return `<a href="#${n.p}" data-p="${n.p}">${RENAME[n.p]}</a>`;
     if(kids.length)return `<div class="dd"><span>${t} &#9662;</span><div class="menu"><a href="#${n.p}" data-p="${n.p}">ทั้งหมด</a>${kids.map(c=>`<a href="#${c.p}" data-p="${c.p}">${emo(c.t)[1]}</a>`).join('')}</div></div>`;
     return `<a href="#${n.p===HOME?'/':n.p}" data-p="${n.p}">${t}</a>`;
   }).join('')+`<a href="${TIMELINE}" target="_blank" rel="noopener">ไทม์ไลน์ &#8599;</a>`;
@@ -308,9 +310,9 @@ function renderHome(){
   const intro=s.find(x=>x.some(b=>b.t==='h'&&/สารานุกรม/.test(b.x)))||[];
   const socialSec=s.find(x=>x.length&&x.every(b=>b.t==='img'&&b.href&&isExt(b.href)));
   const rest=s.filter(x=>x!==intro&&x!==socialSec&&!(x.length===1&&x[0].t==='h'&&/โซเชียล/.test(x[0].x)));
-  const tiles=[['&#129516;','ตัวละคร','มนุษย์ อมนุษย์ ปีศาจ เทพ และสิ่งมีชีวิตหิมพานต์','/ตวละคร',CH().length+' ตัวละคร'],['&#127917;','กลุ่ม & องค์กร','แก๊ง หน่วยข่าวกรอง อิลลูมินาติ Midnight Lust','/กลม-องคกร',D.groups.length+' กลุ่ม'],['&#9881;&#65039;','เทคโนโลยี & อาวุธ','อาวุธ ยุทโธปกรณ์ และนวัตกรรมในจักรวาล','/เทคโนโลย-อาวธ'],['&#128220;','เส้นเวลา & เหตุการณ์','ลำดับเหตุการณ์สำคัญของ LCU','/เสนเวลา-เหตการณ'],['&#127756;','โลกหิมพานต์','ดินแดนแห่งสัตว์ในตำนานและเมืองบาดาล','/ตางโลก/โลกหมพานต'],['&#127767;','สวรรค์ & นรก','ชั้นฟ้า ชั้นนรก และผู้ปกครองแต่ละดินแดน','/ตางโลก/สวรรค-นรก']];
+  const tiles=[['&#129516;','ตัวละคร','มนุษย์ อมนุษย์ ปีศาจ เทพ และสิ่งมีชีวิตหิมพานต์','/ตวละคร',CH().length+' ตัวละคร'],['&#127917;','กลุ่ม & องค์กร','แก๊ง หน่วยข่าวกรอง อิลลูมินาติ Midnight Lust','/กลม-องคกร',D.groups.length+' กลุ่ม'],['&#9881;&#65039;','เทคโนโลยี & อาวุธ','อาวุธ ยุทโธปกรณ์ และนวัตกรรมในจักรวาล','/เทคโนโลย-อาวธ'],['&#128220;','แผนเรื่องใหม่','เรื่องที่กำลังจะมาในจักรวาล LCU','/เสนเวลา-เหตการณ'],['&#127756;','โลกหิมพานต์','ดินแดนแห่งสัตว์ในตำนานและเมืองบาดาล','/ตางโลก/โลกหมพานต'],['&#127767;','สวรรค์ & นรก','ชั้นฟ้า ชั้นนรก และผู้ปกครองแต่ละดินแดน','/ตางโลก/สวรรค-นรก']];
   const feat=CH().filter(c=>c.img&&c.cat==='/ตวละคร/มนษย').slice(0,6).concat(CH().filter(c=>c.img&&c.cat==='/ตวละคร/ปศาจ-เทพ').slice(0,6));
-  $('#app').innerHTML=`<section class="hero">${im(pg.banner)}<div class="in"><h1>LOW CLASS<br><span>UNIVERSE</span></h1><p>จักรวาลเรื่องราวแนวซุปเปอร์ฮีโร่และวายร้ายสัญชาติไทย สไตล์ดาร์ก ดิบ เดือด</p><div class="cta"><a class="btn" href="#/ตวละคร">สำรวจตัวละคร</a><a class="btn ghost" href="${TIMELINE}" target="_blank" rel="noopener">เปิดไทม์ไลน์ &#8599;</a></div></div></section>
+  $('#app').innerHTML=`<section class="hero"><img src="hero.webp" width="1100" height="658" alt="" fetchpriority="high"><div class="in"><h1>LOW CLASS<br><span>UNIVERSE</span></h1><p>จักรวาลเรื่องราวแนวซุปเปอร์ฮีโร่และวายร้ายสัญชาติไทย สไตล์ดาร์ก ดิบ เดือด</p><div class="cta"><a class="btn" href="#/ตวละคร">สำรวจตัวละคร</a></div></div></section>
   <div class="h2">สำรวจจักรวาล LCU</div>
   <div class="tiles">${tiles.map(t=>`<a class="tile" href="#${t[3]}"><div class="i">${t[0]}</div><div class="t">${t[1]}</div><div class="d">${t[2]}</div>${t[4]?`<span class="tag">${t[4]}</span>`:''}</a>`).join('')}</div>
   <div class="h2">ตัวละครเด่น</div>
@@ -348,7 +350,7 @@ function renderPage(p){
     tl=`<div class="h2">&#128293; ขั้วอำนาจแห่งนรก</div><div class="tiles" style="margin-bottom:20px">${T.map(t=>`<a class="tile" href="#${t[4]}"><div class="i">${t[0]}</div><div class="t">${t[1]}</div><div class="d">${t[2]}</div><span class="tag">${t[3]}</span></a>`).join('')}</div>`;
   }
   secs=mergeLead(secs);
-  $('#app').innerHTML=`${head(p,pg.title)}${extra}${tl}${secs.map(secHTML).join('')}${backHTML}`;
+  $('#app').innerHTML=`${head(p,title(p))}${extra}${tl}${secs.map(secHTML).join('')}${backHTML}`;
 }
 
 function renderSearch(q){
