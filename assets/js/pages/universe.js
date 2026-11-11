@@ -1,10 +1,20 @@
 // Universe encyclopedia pages: home, hub, characters, profiles, organizations, generic articles.
-import { S, X, $, $$, esc, strip, norm, img, title, firstImg, store, PATHS, HOME, volumes, storyHref, storyYears, be, fmt, isExt } from '../core.js';
+import { S, X, $, $$, esc, strip, norm, img, title, firstImg, store, PATHS, HOME, volumes, storyHref, storyYears, be, fmt, isExt, loadNovels } from '../core.js';
 import { ICON, pageHead, pathCrumbs, crumbs, secHead, charCard, pageCard, empty, secHTML, mergeLead, proseHTML, blockHTML, backlinksHTML } from '../ui.js';
 
 const app = () => $('#app');
 
 /* ================================================================ HOME */
+// timeline preview: 3 different series, 3 different characters (fallback before novel covers load)
+function tlPicks(TL) {
+  const out = [], usedSeries = new Set(), usedChars = new Set();
+  for (const s of TL.stories) {
+    if (s.lust || usedSeries.has(s.series.k)) continue;
+    const c = (s.chars || []).find(c => c.img && !usedChars.has(c.p)); if (!c) continue;
+    out.push({ s, c }); usedSeries.add(s.series.k); usedChars.add(c.p); if (out.length === 3) break;
+  }
+  return out;
+}
 export function renderHome() {
   const D = S.D, TL = S.TL;
   const intro = D.pages[HOME].secs.find(x => x.some(b => b.t === 'h' && /สารานุกรม/.test(b.x))) || [];
@@ -55,7 +65,7 @@ export function renderHome() {
         <div class="h2" style="margin:10px 0 12px">เหตุการณ์ ${fmt(TL.events.filter(e => !String(e.st).includes('.') && typeof e.st === 'number').length)} รายการ ใน ${mainStories.length} เรื่อง</div>
         <p class="muted">เรียงตามเวลาหรือตามเรื่อง กรองตามซีรีส์ และกดชื่อตัวละครเพื่อไปยังโปรไฟล์ได้ทันที</p>
         <div class="chips" style="margin-top:18px">${TL.series.filter(s => s.k !== 'lust').map(s => `<a class="chip" href="#/universe/timeline?s=${s.k}"><i style="--c:${s.c}"></i>${esc(s.n)}</a>`).join('')}</div>
-      </div><div class="pics">${TL.stories.filter(s => !s.lust && s.chars?.length).slice(0, 3).map(s => `<a href="#${storyHref(s)}" aria-label="${esc(s.name)}">${img(s.chars.find(c => c.img)?.img, { alt: s.name })}</a>`).join('')}</div></div></section>` : ''}
+      </div><div class="pics" id="tlpics">${tlPicks(TL).map(({ s, c }) => `<a href="#${storyHref(s)}" aria-label="${esc(s.name)}">${img(c.img, { alt: s.name })}</a>`).join('')}</div></div></section>` : ''}
 
     <section class="section reveal" id="updates">${secHead('อัปเดตล่าสุด')}<div id="upd" class="stack"><div class="skel" style="height:64px"></div></div></section>
 
@@ -63,6 +73,16 @@ export function renderHome() {
       <div class="prose">${intro.filter(b => b.t === 'p').slice(0, 3).map(blockHTML).join('')}</div></section>
   </div>`;
 
+  // replace the preview with real novel covers (first novel of 3 different series)
+  if (TL) loadNovels().then(nv => {
+    const el = $('#tlpics'); if (!el) return; const used = new Set(); const picks = [];
+    for (const s of TL.stories) {
+      if (s.lust || used.has(s.series.k)) continue;
+      const n = (nv.novels || []).find(n => !n.adult && n.cover && String(n.story_no) === String(s.no)); if (!n) continue;
+      picks.push({ s, n }); used.add(s.series.k); if (picks.length === 3) break;
+    }
+    if (picks.length === 3) el.innerHTML = picks.map(({ s, n }) => `<a href="#/novels/${esc(n.slug)}" aria-label="${esc(n.title)}"><img src="${esc(n.cover)}" alt="${esc(n.title)}" loading="lazy" decoding="async"></a>`).join('');
+  }).catch(() => {});
   fetch('updates.json').then(r => r.ok ? r.json() : []).then(u => {
     const el = $('#upd'); if (!el) return;
     el.innerHTML = u.length ? u.slice(0, 5).map(x => `<div class="item" style="cursor:default"><div class="th ph">${esc(x.date.slice(5).replace('-', '/'))}</div><div><div class="t">${esc(x.title)}</div><div class="d">${esc(x.detail || '')}</div></div></div>`).join('') : empty('ยังไม่มีบันทึกอัปเดต');
