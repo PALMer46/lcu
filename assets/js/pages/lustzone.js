@@ -50,6 +50,9 @@ async function lzGet(path) {
   return r.json();
 }
 const head = (crumbsList, sub = '', extra = '') => pageHead({ crumbsHTML: crumbs(crumbsList), eyebrow: '18+ · Adult Fiction', h1: crumbsList[crumbsList.length - 1][0], sub, extra });
+// order by LCU story number taken from the slug: lz-3-11-2 → [3,11,2] (3.11.2 before 11.2 before 16.2 …)
+const noOf = n => (n.slug || '').replace(/^lz-/, '').split('-').map(Number);
+const byStoryNo = (a, b) => { const x = noOf(a), y = noOf(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] ?? -1) - (y[i] ?? -1); if (d) return d; } return 0; };
 const chLabel = c => /^(ตอน|บท)/.test(c.title || '') ? c.title : `ตอนที่ ${c.n}${c.title ? ' · ' + c.title : ''}`;
 
 // #/lustzone, #/lustzone/<novelId>, #/lustzone/<novelId>/<n>
@@ -64,7 +67,7 @@ export async function renderLustzone(p = '/lustzone') {
   let stories = [];
   try { await loadLustTimeline(); stories = S.TL.stories.filter(s => s.lust); } catch { /* timeline optional */ }
   let lib = null, err = '';
-  if (apiBase()) { try { lib = (await lzGet('/v1/lz/novels')).novels; } catch { err = 'เชื่อมต่อเซิร์ฟเวอร์ LUSTZONE ไม่สำเร็จ ลองรีเฟรชอีกครั้ง'; } }
+  if (apiBase()) { try { lib = (await lzGet('/v1/lz/novels')).novels.sort(byStoryNo); } catch { err = 'เชื่อมต่อเซิร์ฟเวอร์ LUSTZONE ไม่สำเร็จ ลองรีเฟรชอีกครั้ง'; } }
   const prog = store.get('lcu:progress', {});
   const libHTML = lib && lib.length ? `<div class="grid">${lib.map(n => { const pr = prog['lz:' + n.id]; return `<a class="card nv-card" href="#/lustzone/${esc(n.id)}"><div class="art">${n.cover ? `<img src="${n.cover}" alt="${esc(n.title)}" loading="lazy">` : ''}</div><div class="tagline"><span class="badge lz">18+</span></div><div class="cap"><div class="nm">${esc(n.title)}</div><div class="sb">${n.chapters} ตอน${pr ? ' · อ่านถึงตอน ' + pr.n : ''}</div></div></a>`; }).join('')}</div>`
     : err ? empty(err, '', '!') : empty('ยังไม่มีนิยายที่เผยแพร่ในส่วนนี้', '<p>เนื้อหาตอนของ LUSTZONE เปิดผ่านระบบที่ตรวจสิทธิ์ฝั่งเซิร์ฟเวอร์เท่านั้น</p>', '18+');
