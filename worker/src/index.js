@@ -127,6 +127,21 @@ async function lzNovel(req, env, url) {
   return json(n, 200, { 'cache-control': 'private, no-store', 'x-robots-tag': 'noindex' });
 }
 
+// ---- LUSTZONE gallery ----
+async function lzGallery(req, env) {
+  if (!(await verifyAge(req, env))) return json({ error: 'age_required' }, 403);
+  const { results } = await env.DB.prepare('SELECT id, title, width, height FROM lz_gallery ORDER BY sort_order, id').all();
+  return json({ items: results }, 200, { 'cache-control': 'private, no-store', 'x-robots-tag': 'noindex' });
+}
+async function lzGalleryImage(req, env, url) {
+  if (!(await verifyAge(req, env))) return json({ error: 'age_required' }, 403);
+  const id = url.searchParams.get('id') || ''; if (!ID.test(id)) return json({ error: 'invalid' }, 400);
+  const row = await env.DB.prepare('SELECT mime, data FROM lz_gallery WHERE id=?1').bind(id).first();
+  if (!row) return json({ error: 'not_found' }, 404);
+  const bin = Uint8Array.from(atob(row.data), c => c.charCodeAt(0));
+  return new Response(bin, { headers: { 'content-type': row.mime, 'cache-control': 'private, max-age=3600', 'x-robots-tag': 'noindex', 'content-disposition': 'inline' } });
+}
+
 async function progress(req, env, url) {
   const reader = url.searchParams.get('reader') || '';
   if (!ID.test(reader)) return json({ error: 'invalid' }, 400);
@@ -154,6 +169,8 @@ export default {
       else if (url.pathname === '/v1/lz/chapter' && req.method === 'GET') res = await lzChapter(req, env, url);
       else if (url.pathname === '/v1/lz/novels' && req.method === 'GET') res = await lzNovels(req, env);
       else if (url.pathname === '/v1/lz/novel' && req.method === 'GET') res = await lzNovel(req, env, url);
+      else if (url.pathname === '/v1/lz/gallery' && req.method === 'GET') res = await lzGallery(req, env);
+      else if (url.pathname === '/v1/lz/gallery/image' && req.method === 'GET') res = await lzGalleryImage(req, env, url);
       else if (url.pathname === '/v1/progress' && (req.method === 'GET' || req.method === 'PUT')) res = await progress(req, env, url);
       else res = json({ error: 'not_found' }, 404);
     } catch (e) { console.error(e); res = json({ error: 'server_error' }, 500); }

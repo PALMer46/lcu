@@ -89,3 +89,15 @@ CREATE TABLE IF NOT EXISTS lz_covers (
   mime     TEXT NOT NULL,
   data     TEXT NOT NULL   -- base64
 );
+
+-- LUSTZONE gallery (images served only to age-verified readers)
+CREATE TABLE IF NOT EXISTS lz_gallery (
+  id         TEXT PRIMARY KEY,
+  title      TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  mime       TEXT NOT NULL,
+  width      INTEGER,
+  height     INTEGER,
+  data       TEXT NOT NULL,   -- base64
+  created_at TEXT
+);

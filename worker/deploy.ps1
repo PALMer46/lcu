@@ -60,6 +60,16 @@ if (Test-Path $lzFile) {
   }
 }
 
+# 3b) LUSTZONE gallery images (private) -> D1 only
+$galFile = Join-Path $Here 'lz-gallery.json'
+if (Test-Path $galFile) {
+  $gal = [IO.File]::ReadAllText($galFile, [Text.Encoding]::UTF8) | ConvertFrom-Json
+  foreach ($g in $gal.items) {
+    Q "INSERT INTO lz_gallery (id,title,sort_order,mime,width,height,data,created_at) VALUES (?1,?2,?3,?4,?5,?6,?7,datetime('now')) ON CONFLICT(id) DO UPDATE SET title=excluded.title, sort_order=excluded.sort_order, mime=excluded.mime, width=excluded.width, height=excluded.height, data=excluded.data" @($g.id, $g.title, [int]$g.sort, $g.mime, [int]$g.w, [int]$g.h, $g.data) | Out-Null
+    Write-Host "gallery: $($g.id)"
+  }
+}
+
 # 4) Worker script with bindings (secrets generated here, never stored on disk)
 $secret1 = ([guid]::NewGuid().ToString('N') + [guid]::NewGuid().ToString('N'))
 $secret2 = ([guid]::NewGuid().ToString('N'))

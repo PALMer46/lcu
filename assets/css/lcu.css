@@ -515,3 +515,9 @@ body.reading::before{display:none}
 @media (max-width:640px){.kpis{grid-template-columns:1fr 1fr}.kpi{padding:var(--s4)}.kpi b{font-size:26px}.kpi b.na{font-size:15px}}
 .reader figure.r-img{margin:1.6em 0}
 .reader figure.r-img img{width:100%;height:auto;border-radius:10px;cursor:zoom-in}
+
+/* LUSTZONE gallery */
+.lz-gal{columns:3 280px;column-gap:16px}
+.lz-gal figure{break-inside:avoid;margin:0 0 16px}
+.lz-gal img{width:100%;height:auto;border-radius:12px;border:1px solid rgba(255,92,138,.25);cursor:zoom-in;display:block}
+.lz-gal figcaption{font:500 13px var(--f-head);color:var(--text-2);margin-top:6px}

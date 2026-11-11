@@ -61,6 +61,7 @@ export async function renderLustzone(p = '/lustzone') {
   const [, , id, num] = p.split('/');
   app.innerHTML = `<div class="lz-theme">${pageHead({ crumbsHTML: crumbs([['หน้าแรก', '/'], ['LUSTZONE', null]]), eyebrow: '18+ · Adult Fiction', h1: 'LUSTZONE' })}<div class="wrap"><div class="skel" style="height:220px;margin-top:32px"></div></div></div>`;
   if (!(await requireAge())) return;
+  if (id === 'gallery' && apiBase()) return renderLzGallery();
   if (id && num && apiBase()) return renderLzReader(id, +num);
   if (id && apiBase()) return renderLzNovel(id);
   if (!id) drip();
@@ -74,6 +75,7 @@ export async function renderLustzone(p = '/lustzone') {
   app.innerHTML = `<div class="lz-theme">${head([['หน้าแรก', '/'], ['LUSTZONE', null]], 'โซนนิยายสำหรับผู้ใหญ่ของจักรวาล LCU แยกจากคลังนิยายทั่วไปอย่างชัดเจน', `<div class="chips" style="margin-top:14px"><button class="chip" id="lzout">ออกจาก LUSTZONE / ยกเลิกการยืนยันอายุ</button></div>`)}
   <div class="wrap">
     <section class="section">${secHead('คลังนิยาย LUSTZONE')}${libHTML}</section>
+    ${apiBase() && !err ? `<section class="section">${secHead('แกลเลอรี', 'เปิดแกลเลอรี', '/lustzone/gallery')}<a class="card text" href="#/lustzone/gallery" style="display:flex;align-items:center;gap:16px;border-left:3px solid var(--lust-accent)"><span class="badge lz">18+</span><div><div class="h3" style="font-size:18px">ภาพประกอบ LUSTZONE</div><p>ภาพวาดตัวละครฉบับเต็มสำหรับผู้ใหญ่</p></div></a></section>` : ''}
     ${stories.length ? `<section class="section">${secHead('เรื่องใน Lust Zone (ไทม์ไลน์)', 'ไทม์ไลน์', '/universe/timeline?v=story&lz=1')}
       <div class="grid lg">${stories.map(s => `<a class="card text" href="#${storyHref(s)}" style="border-left:3px solid var(--lust-accent)"><span class="eyebrow">[L${esc(s.no)}]</span><div class="h3" style="margin-top:8px;font-size:18px">${esc(s.name)}</div><p>${storyYears(s) ? 'พ.ศ. ' + storyYears(s) + ' · ' : ''}${s.count} เหตุการณ์ (สรุปเฉพาะเนื้อเรื่อง)</p></a>`).join('')}</div></section>` : ''}
     <section class="section">${secHead('สถิติ LUSTZONE')}${statBlock('lustzone')}</section>
@@ -89,6 +91,27 @@ async function renderLzNovel(id) {
   track({ type: 'novel_view', novel: id });
   app.innerHTML = `<div class="lz-theme">${head([['หน้าแรก', '/'], ['LUSTZONE', '/lustzone'], [n.title, null]], '', `<div class="chips" style="margin-top:14px"><span class="badge lz">18+</span><span class="chip">${chs.length} ตอน</span></div>${chs.length ? `<div style="margin-top:20px"><a class="btn" href="#/lustzone/${esc(id)}/${pr ? pr.n : chs[0].n}">${pr ? 'อ่านต่อ ตอนที่ ' + pr.n : 'เริ่มอ่าน'}</a></div>` : ''}`)}
   <div class="wrap"><section class="section">${secHead('สารบัญ')}<div class="toc-list">${chs.map(c => `<a href="#/lustzone/${esc(id)}/${c.n}" class="${pr && c.n < pr.n ? 'read' : ''} ${pr && c.n === pr.n ? 'cur' : ''}"><span>${esc(chLabel(c))}</span><span class="muted" style="font-size:13px">~${c.minutes} นาที</span></a>`).join('')}</div></section></div></div>`;
+}
+
+// gallery images are fetched with the age token and shown as blob URLs (no public image URL exists)
+const blobCache = {};
+async function lzImage(id) {
+  if (blobCache[id]) return blobCache[id];
+  await obtainAgeToken();
+  const r = await fetch(apiBase() + '/v1/lz/gallery/image?id=' + encodeURIComponent(id), { headers: authHeader() });
+  if (!r.ok) throw new Error('img ' + r.status);
+  return (blobCache[id] = URL.createObjectURL(await r.blob()));
+}
+async function renderLzGallery() {
+  const app = $('#app');
+  let items = null; try { items = (await lzGet('/v1/lz/gallery')).items; } catch { items = null; }
+  app.innerHTML = `<div class="lz-theme">${head([['หน้าแรก', '/'], ['LUSTZONE', '/lustzone'], ['แกลเลอรี', null]], 'ภาพประกอบตัวละครสำหรับผู้ใหญ่ กดที่ภาพเพื่อขยาย')}
+  <div class="wrap"><section class="section">${items == null ? empty('โหลดแกลเลอรีไม่สำเร็จ', '<p>ลองรีเฟรชอีกครั้ง</p>', '!') : !items.length ? empty('ยังไม่มีภาพในแกลเลอรี', '', '18+')
+    : `<div class="lz-gal">${items.map(g => `<figure><div class="skel" style="aspect-ratio:${g.width || 3}/${g.height || 4}" data-gid="${esc(g.id)}"></div>${g.title ? `<figcaption>${esc(g.title)}</figcaption>` : ''}</figure>`).join('')}</div>`}</section></div></div>`;
+  for (const el of document.querySelectorAll('[data-gid]')) {
+    lzImage(el.dataset.gid).then(src => { if (!el.isConnected) return; const im = document.createElement('img'); im.src = src; im.className = 'z'; im.alt = 'ภาพประกอบ LUSTZONE'; im.draggable = false; el.replaceWith(im); })
+      .catch(() => { el.outerHTML = '<div class="notice">โหลดภาพไม่สำเร็จ</div>'; });
+  }
 }
 
 let lzMetaCache = {};
