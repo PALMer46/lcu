@@ -6,6 +6,7 @@ import { pageHead, crumbs, secHead } from './ui.js';
 
 const API = CONFIG.API_BASE.replace(/\/$/, '');
 export const statsEnabled = () => !!API;
+export const apiBase = () => API;
 
 export function readerId() {
   let id = store.get('lcu:rid');
@@ -19,17 +20,18 @@ function sessionId() {
 export function track(ev) {
   if (!API) return;
   const body = JSON.stringify({ ...ev, reader: readerId(), session: sessionId() });
-  try { fetch(API + '/v1/events', { method: 'POST', headers: { 'content-type': 'application/json' }, body, keepalive: true }).catch(() => {}); } catch { /* never break reading */ }
+  try { fetch(API + '/v1/events', { method: 'POST', headers: { 'content-type': 'application/json', ...authHeader() }, body, keepalive: true }).catch(() => {}); } catch { /* never break reading */ }
 }
 
 // LUSTZONE: signed, expiring token issued by the Worker after the 18+ confirmation (checked server-side)
 export async function obtainAgeToken() {
   if (!API) return;
+  const cur = store.get('lcu:lztok'); if (cur && cur.exp > Date.now() + 864e5) return;
   try { const r = await fetch(API + '/v1/age', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"confirm":true}' });
     if (r.ok) { const j = await r.json(); store.set('lcu:lztok', { t: j.token, exp: j.exp }); } } catch { /* offline */ }
 }
 export const clearAgeToken = () => store.del('lcu:lztok');
-function authHeader() { const t = store.get('lcu:lztok'); return t && t.exp > Date.now() ? { authorization: 'Bearer ' + t.t } : {}; }
+export function authHeader() { const t = store.get('lcu:lztok'); return t && t.exp > Date.now() ? { authorization: 'Bearer ' + t.t } : {}; }
 async function fetchStats(scope) {
   const r = await fetch(`${API}/v1/stats?scope=${encodeURIComponent(scope)}`, { headers: authHeader() });
   if (!r.ok) throw new Error('stats ' + r.status);

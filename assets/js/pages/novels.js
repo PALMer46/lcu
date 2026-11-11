@@ -65,20 +65,26 @@ export async function renderNovel(slug) {
 
 /* ================================================================ READER */
 const PREF_DEF = { size: 19, lh: 1.95, theme: 'dark', font: 'sans' };
-export async function renderReader(slug, num) {
+// src (optional) lets other sections reuse the reader, e.g. LUSTZONE chapters served by the protected API:
+// { base: '/lustzone/<id>', key: 'lz:<id>', load: async num => ({ n:{id,title}, meta:{chapters}, ch }) }
+export async function renderReader(slug, num, src = null) {
+  const base = src ? src.base : '/novels/' + slug; const pkey = src ? src.key : slug;
   document.body.classList.add('reading');
-  app().innerHTML = `<div class="reader"><div class="rbar"><a class="icon-btn" href="#/novels/${esc(slug)}" aria-label="กลับไปหน้านิยาย">${ICON.back}</a><div class="t">กำลังโหลด…</div></div><article><div class="skel" style="height:40px;width:60%"></div><div class="skel" style="height:400px;margin-top:30px"></div></article></div>`;
-  const nv = await loadNovels(); const n = pub(nv).find(x => x.slug === slug);
-  let meta, ch;
-  try { meta = await getJSON(`novels/${encodeURIComponent(slug)}/meta.json`); ch = await getJSON(`novels/${encodeURIComponent(slug)}/${num}.json`); } catch { ch = null; }
-  if (!n || !ch) { document.body.classList.remove('reading'); app().innerHTML = `<div class="wrap" style="padding-top:60px">${empty('ไม่พบตอนนี้', `<a class="btn ghost sm" href="#/novels${n ? '/' + esc(slug) : ''}" style="margin-top:14px">กลับ</a>`)}</div>`; return; }
+  app().innerHTML = `<div class="reader"><div class="rbar"><a class="icon-btn" href="#${esc(base)}" aria-label="กลับไปหน้านิยาย">${ICON.back}</a><div class="t">กำลังโหลด…</div></div><article><div class="skel" style="height:40px;width:60%"></div><div class="skel" style="height:400px;margin-top:30px"></div></article></div>`;
+  let n, meta, ch;
+  if (src) { try { ({ n, meta, ch } = await src.load(num)); } catch { ch = null; } }
+  else {
+    const nv = await loadNovels(); n = pub(nv).find(x => x.slug === slug);
+    try { meta = await getJSON(`novels/${encodeURIComponent(slug)}/meta.json`); ch = await getJSON(`novels/${encodeURIComponent(slug)}/${num}.json`); } catch { ch = null; }
+  }
+  if (!n || !ch) { document.body.classList.remove('reading'); app().innerHTML = `<div class="wrap" style="padding-top:60px">${empty('ไม่พบตอนนี้', `<a class="btn ghost sm" href="#${n ? esc(base) : (src ? '/lustzone' : '/novels')}" style="margin-top:14px">กลับ</a>`)}</div>`; return; }
   const chs = (meta.chapters || []).filter(c => c.published !== false); const i = chs.findIndex(c => c.n === num);
   const prev = chs[i - 1], next = chs[i + 1];
   const pref = { ...PREF_DEF, ...store.get('lcu:reader', {}) };
   const text = ch.blocks.map(b => b.t === 'hr' ? '<hr>' : b.t === 'img' ? `<figure class="r-img"><img src="${esc(b.src)}" width="${b.w}" height="${b.h}" loading="lazy" decoding="async" alt="ภาพประกอบ" class="z"></figure>` : b.t === 'h' ? `<h2>${esc(b.x)}</h2>` : `<p>${esc(b.x).replace(/\n/g, '<br>')}</p>`).join('');
   const chars = ch.blocks.reduce((a, b) => a + (b.x || '').length, 0); const mins = Math.max(1, Math.round(chars / 800));
   app().innerHTML = `<div class="reader" id="rd">
-    <div class="rbar"><a class="icon-btn" href="#/novels/${esc(slug)}" aria-label="กลับไปหน้านิยาย">${ICON.back}</a>
+    <div class="rbar"><a class="icon-btn" href="#${esc(base)}" aria-label="กลับไปหน้านิยาย">${ICON.back}</a>
       <div class="t">${esc(n.title)}<small>${chs.length > 1 ? esc(chLabel(ch, num)) : 'ตอนเดียวจบ'}</small></div>
       <button class="icon-btn" id="rtoc" aria-label="สารบัญ">${ICON.list}</button><button class="icon-btn" id="rset" aria-label="ตั้งค่าการอ่าน" aria-expanded="false">${ICON.gear}</button><div class="prog" id="rprog"></div></div>
     <div class="rpanel" id="rpanel" role="dialog" aria-label="ตั้งค่าการอ่าน">
@@ -88,7 +94,7 @@ export async function renderReader(slug, num) {
       <div class="lbl">แบบอักษร</div><div class="chips"><button class="chip" data-f="sans">ไม่มีหัว</button><button class="chip" data-f="serif">มีเชิง</button></div>
     </div>
     <article lang="th"><h1>${esc(chs.length > 1 ? chLabel(ch, num) : (ch.title || n.title))}</h1><div class="meta">${chs.length > 1 ? `ตอนที่ ${num} จาก ${chs.length}` : 'ตอนเดียวจบ'} · อ่านประมาณ ${mins} นาที</div>${text}</article>
-    <nav class="rnav" aria-label="นำทางตอน">${prev ? `<a class="btn ghost" href="#/novels/${esc(slug)}/${prev.n}">← ตอนก่อนหน้า</a>` : '<span></span>'}${next ? `<a class="btn" href="#/novels/${esc(slug)}/${next.n}">ตอนถัดไป →</a>` : `<a class="btn ghost" href="#/novels/${esc(slug)}">กลับสารบัญ</a>`}</nav>
+    <nav class="rnav" aria-label="นำทางตอน">${prev ? `<a class="btn ghost" href="#${esc(base)}/${prev.n}">← ตอนก่อนหน้า</a>` : '<span></span>'}${next ? `<a class="btn" href="#${esc(base)}/${next.n}">ตอนถัดไป →</a>` : `<a class="btn ghost" href="#${esc(base)}">กลับสารบัญ</a>`}</nav>
   </div>`;
   const rd = $('#rd');
   const apply = () => {
@@ -102,22 +108,22 @@ export async function renderReader(slug, num) {
   };
   apply();
   $('#rset').onclick = () => { const on = $('#rpanel').classList.toggle('on'); $('#rset').setAttribute('aria-expanded', on); };
-  $('#rtoc').onclick = () => go('/novels/' + slug);
+  $('#rtoc').onclick = () => go(base);
   $('#rpanel').onclick = e => { const b = e.target.closest('button'); if (!b) return;
     const a = b.dataset.a; if (a === 's-') pref.size = Math.max(14, pref.size - 1); if (a === 's+') pref.size = Math.min(30, pref.size + 1);
     if (a === 'l-') pref.lh = Math.max(1.4, +(pref.lh - .1).toFixed(2)); if (a === 'l+') pref.lh = Math.min(2.6, +(pref.lh + .1).toFixed(2));
     if (b.dataset.t) pref.theme = b.dataset.t; if (b.dataset.f) pref.font = b.dataset.f; apply(); };
   // progress
-  const saved = progress()[slug];
+  const saved = progress()[pkey];
   if (saved && saved.n === num && saved.pos > .02) requestAnimationFrame(() => scrollTo(0, saved.pos * (document.documentElement.scrollHeight - innerHeight)));
   let tmr; const onScroll = () => {
     const h = document.documentElement.scrollHeight - innerHeight; const pos = h > 0 ? Math.min(1, scrollY / h) : 1;
     const bar = $('#rprog'); if (!bar) { removeEventListener('scroll', onScroll); return; } bar.style.width = (pos * 100) + '%';
-    clearTimeout(tmr); tmr = setTimeout(() => { const all = progress(); all[slug] = { n: num, pos, t: Date.now(), title: ch.title || '' }; store.set('lcu:progress', all); }, 400);
+    clearTimeout(tmr); tmr = setTimeout(() => { const all = progress(); all[pkey] = { n: num, pos, t: Date.now(), title: ch.title || '' }; store.set('lcu:progress', all); }, 400);
   };
   addEventListener('scroll', onScroll, { passive: true }); onScroll();
   const onKey = e => { if (!$('#rd')) return removeEventListener('keydown', onKey); if (e.target.closest('input,textarea')) return;
-    if (e.key === 'ArrowRight' && next) go(`/novels/${slug}/${next.n}`); if (e.key === 'ArrowLeft' && prev) go(`/novels/${slug}/${prev.n}`); };
+    if (e.key === 'ArrowRight' && next) go(`${base}/${next.n}`); if (e.key === 'ArrowLeft' && prev) go(`${base}/${prev.n}`); };
   addEventListener('keydown', onKey);
   track({ type: 'chapter_view', novel: n.id, chapter: `${n.id}:${num}` });
 }

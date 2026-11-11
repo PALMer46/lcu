@@ -85,7 +85,7 @@ def to_blocks(p: Path):
                 rid = blip.get(qn('r:embed'))
                 if rid and rid in doc.part.related_parts: out.append({'t': 'img', 'x': '', 'ref': rid})
             if para.text.strip():
-                out.append({'t': 'h' if (para.style.name or '').lower().startswith('heading') else 'p', 'x': para.text.strip('\n')})
+                out.append({'t': 'h' if ((para.style.name if para.style is not None else '') or '').lower().startswith('heading') else 'p', 'x': para.text.strip('\n')})
         return None, out
     text = read_text(p).replace('\r\n', '\n').replace('\r', '\n')
     lines = text.split('\n')
@@ -229,17 +229,18 @@ def scan(src: Path, out: Path):
         if nums and sorted(nums) != list(range(min(nums), min(nums) + len(nums))): warn.append('เลขตอนไม่ต่อเนื่อง (อาจมีตอนขาด)')
         if any(c['duplicate_of'] for c in chs): warn.append('พบเนื้อหาตอนซ้ำกับไฟล์อื่น')
         path_txt = str(rel)
+        adult_hit = ADULT_RE.search(str(src.resolve()) + '/' + path_txt)
         vm = VOL_RE.search(path_txt)
         if doc_titles and tnorm(doc_titles[0]) == tnorm(title): title = clean_title(doc_titles[0])   # the author's own formatting, e.g. "PAE PA LAI : แก๊งแห่งไชยา"
-        slug = f'lcu-{story_no}'.replace('.', '-') if story_no else slugify(title)   # short, stable URL: #/novels/lcu-17
+        slug = (f'lz-{story_no}' if adult_hit else f'lcu-{story_no}').replace('.', '-') if story_no else slugify(title)   # short, stable URL: #/novels/lcu-17
         if not cover: warn.append('ไม่พบภาพปก')
         if any(c.get('images') for c in chs): warn.append(f"มีภาพประกอบในเนื้อหา {sum(c.get('images', 0) for c in chs)} ภาพ (จะนำเข้าตามตำแหน่งเดิม)")
         dup_novel = next((e['slug'] for e in existing if e['slug'] == slug or e['title'] == title), None)
         if dup_novel: warn.append(f'มีนิยายชื่อนี้ในเว็บแล้ว ({dup_novel}) — การ build จะอัปเดตเรื่องเดิม')
         novels.append({
             'approved': False, 'title': title, 'slug': slug, 'id': novel_id(slug), 'author': '', 'description': '',
-            'volume': f'vol-{vm.group(1)}' if vm else None, 'category': 'lustzone' if ADULT_RE.search(path_txt) else 'general',
-            'adult': bool(ADULT_RE.search(path_txt)), 'status': None, 'story_no': story_no, 'source_folder': path_txt,
+            'volume': f'vol-{vm.group(1)}' if vm else None, 'category': 'lustzone' if adult_hit else 'general',
+            'adult': bool(adult_hit), 'status': None, 'story_no': story_no, 'source_folder': path_txt,
             'cover': str(cover.relative_to(src)) if cover else None, 'warnings': warn, 'chapters': chs,
         })
     manifest = {'source_root': str(src.resolve()), 'scanned_at': datetime.now(timezone.utc).isoformat(timespec='seconds'), 'novels': novels, 'errors': errors}
@@ -291,7 +292,7 @@ def build(manifest_path: Path, private_out: Path | None):
             _, _, blocks = strip_titles(blocks, n['title'])
             if blocks and blocks[0].get('x', '').strip() == (c.get('title') or '').strip(): blocks = blocks[1:]
             chapters.append((c, blocks))
-        seed.append(f"INSERT INTO novels (id,title,slug,description,cover_url,author,volume_id,category_id,status,published_at,updated_at) VALUES ({sq(nid)},{sq(n['title'])},{sq(slug)},{sq(n.get('description'))},NULL,{sq(n.get('author'))},{sq(n.get('volume'))},{sq('lustzone' if adult else 'general')},{sq(n.get('status', 'ongoing'))},{sq(now)},{sq(now)}) "
+        seed.append(f"INSERT INTO novels (id,title,slug,description,cover_url,author,volume_id,category_id,status,published_at,updated_at) VALUES ({sq(nid)},{sq(n['title'])},{sq(slug)},{sq(n.get('description'))},NULL,{sq(n.get('author'))},{sq(n.get('volume'))},{sq('lustzone' if adult else 'general')},{sq(n.get('status') or 'ongoing')},{sq(now)},{sq(now)}) "
                     f"ON CONFLICT(id) DO UPDATE SET title=excluded.title, description=excluded.description, author=excluded.author, volume_id=excluded.volume_id, status=excluded.status, updated_at=excluded.updated_at;")
         for c, blocks in chapters:
             content = sq(json.dumps(blocks, ensure_ascii=False)) if adult else 'NULL'

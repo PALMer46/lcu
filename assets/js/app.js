@@ -137,7 +137,7 @@ const R = (p, qs) => {
   if ((m = p.match(/^\/novels\/vol-(\d+)$/))) return ['novels', renderVolume(+m[1]), `Vol.${m[1]}`];
   if ((m = p.match(/^\/novels\/([^/]+)\/(\d+)$/))) return ['novels', renderReader(m[1], +m[2]), 'อ่านนิยาย'];
   if ((m = p.match(/^\/novels\/([^/]+)$/))) return ['novels', renderNovel(m[1]), 'นิยาย'];
-  if (p.startsWith('/lustzone')) return ['lustzone', renderLustzone(), 'LUSTZONE'];
+  if (p === '/lustzone' || p.startsWith('/lustzone/')) return ['lustzone', renderLustzone(p), 'LUSTZONE'];
   if (p === '/about') return ['about', renderAbout(), 'About LCU'];
   if (p === '/stats') return ['novels', renderStats(), 'สถิติการอ่าน'];
   if (p === '/ค้นหา') { const q = qs.get('q') || ''; return ['', renderSearch(q, qs.get('type') || ''), q ? `ค้นหา “${q}”` : 'ค้นหา']; }

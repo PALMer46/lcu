@@ -82,3 +82,10 @@ INSERT OR IGNORE INTO volumes (id,name,slug,sort_order) VALUES
 INSERT OR IGNORE INTO categories (id,name,slug,is_adult) VALUES
  ('general','LCU Novels','general',0),
  ('lustzone','LUSTZONE','lustzone',1);
+
+-- LUSTZONE covers (served only inside the age-gated catalog response)
+CREATE TABLE IF NOT EXISTS lz_covers (
+  novel_id TEXT PRIMARY KEY REFERENCES novels(id) ON DELETE CASCADE,
+  mime     TEXT NOT NULL,
+  data     TEXT NOT NULL   -- base64
+);

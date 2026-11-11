@@ -107,6 +107,26 @@ async function lzChapter(req, env, url) {
   return json({ n: row.n, title: row.title, blocks: JSON.parse(row.content || '[]') }, 200, { 'cache-control': 'private, no-store', 'x-robots-tag': 'noindex' });
 }
 
+// ---- LUSTZONE catalog (age token required for everything below) ----
+async function lzNovels(req, env) {
+  if (!(await verifyAge(req, env))) return json({ error: 'age_required' }, 403);
+  const { results } = await env.DB.prepare(`SELECT n.id, n.title, n.slug, n.description, n.status, n.updated_at,
+      (SELECT COUNT(*) FROM chapters h WHERE h.novel_id=n.id AND h.is_published=1) chapters,
+      (SELECT 'data:' || mime || ';base64,' || data FROM lz_covers WHERE novel_id=n.id) cover
+    FROM novels n JOIN categories c ON c.id=n.category_id WHERE c.is_adult=1 AND n.status!='draft' ORDER BY n.slug`).all();
+  return json({ novels: results }, 200, { 'cache-control': 'private, no-store', 'x-robots-tag': 'noindex' });
+}
+async function lzNovel(req, env, url) {
+  if (!(await verifyAge(req, env))) return json({ error: 'age_required' }, 403);
+  const id = url.searchParams.get('id') || ''; if (!ID.test(id)) return json({ error: 'invalid' }, 400);
+  const n = await env.DB.prepare(`SELECT n.id, n.title, n.slug, n.description, n.status, n.updated_at FROM novels n JOIN categories c ON c.id=n.category_id
+    WHERE n.id=?1 AND c.is_adult=1 AND n.status!='draft'`).bind(id).first();
+  if (!n) return json({ error: 'not_found' }, 404);
+  const { results } = await env.DB.prepare(`SELECT chapter_number n, title, length(content) len FROM chapters WHERE novel_id=?1 AND is_published=1 ORDER BY chapter_number`).bind(id).all();
+  n.chapters = results.map(r => ({ n: r.n, title: r.title, minutes: Math.max(1, Math.round((r.len || 0) / 900)) }));
+  return json(n, 200, { 'cache-control': 'private, no-store', 'x-robots-tag': 'noindex' });
+}
+
 async function progress(req, env, url) {
   const reader = url.searchParams.get('reader') || '';
   if (!ID.test(reader)) return json({ error: 'invalid' }, 400);
@@ -132,6 +152,8 @@ export default {
       else if (url.pathname === '/v1/stats' && req.method === 'GET') res = await getStats(req, env, url);
       else if (url.pathname === '/v1/age' && req.method === 'POST') res = await issueAge(req, env);
       else if (url.pathname === '/v1/lz/chapter' && req.method === 'GET') res = await lzChapter(req, env, url);
+      else if (url.pathname === '/v1/lz/novels' && req.method === 'GET') res = await lzNovels(req, env);
+      else if (url.pathname === '/v1/lz/novel' && req.method === 'GET') res = await lzNovel(req, env, url);
       else if (url.pathname === '/v1/progress' && (req.method === 'GET' || req.method === 'PUT')) res = await progress(req, env, url);
       else res = json({ error: 'not_found' }, 404);
     } catch (e) { console.error(e); res = json({ error: 'server_error' }, 500); }
