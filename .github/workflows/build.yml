@@ -1,10 +1,8 @@
 name: Build LCU site from Google Sites
+# Manual only: run from the Actions tab when Google Sites content changes.
+# (Automatic runs on push were removed so site upgrades are never overwritten.)
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - 'tools/**'
-      - '.github/workflows/build.yml'
 permissions:
   contents: write
 concurrency:
@@ -23,13 +21,13 @@ jobs:
       - name: Scrape pages and convert images to WebP
         run: |
           rm -rf img
-          python tools/scrape.py tools/raw.json img
+          python tools/scrape.py "$RUNNER_TEMP/raw.json" img
       - name: Build data.json
-        run: python tools/build.py tools/raw.json data.json
+        run: python tools/build.py "$RUNNER_TEMP/raw.json" data.json
       - name: Commit
         run: |
           git config user.name "lcu-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A img data.json tools/raw.json
+          git add -A img data.json
           git commit -m "Build site data and images from Google Sites" || echo "nothing to commit"
           git push

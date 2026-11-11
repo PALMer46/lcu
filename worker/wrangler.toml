@@ -1,0 +1,15 @@
+name = "lcu-api"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "lcu"
+database_id = "REPLACE_WITH_ID_FROM_wrangler_d1_create"
+
+[vars]
+ALLOWED_ORIGINS = "https://palmer46.github.io"
+DEDUPE_MINUTES = "30"
+RATE_LIMIT_PER_MIN = "60"
+AGE_TOKEN_DAYS = "30"
+# Secrets (never commit):  npx wrangler secret put AGE_SECRET   /   npx wrangler secret put IP_SALT
