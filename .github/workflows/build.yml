@@ -30,4 +30,6 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A img data.json
           git commit -m "Build site data and images from Google Sites" || echo "nothing to commit"
+          # the site may have been updated while this job was running: replay our commit on top of it
+          git pull --rebase origin main
           git push
