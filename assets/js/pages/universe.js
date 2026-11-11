@@ -225,10 +225,6 @@ export function renderPage(p) {
   if (secs[0]?.length === 1 && secs[0][0].t === 'h' && norm(secs[0][0].x) === norm(pg.title)) secs.shift();
   let pre = '';
   const isGroup = p.startsWith(PATHS.groups + '/');
-  if (isGroup) {
-    const mem = X.groupMembers.get(p) || [];
-    if (mem.length) pre += `<section class="section">${secHead('สมาชิกในฐานข้อมูล')}<div class="grid sm">${mem.map(c => charCard(c)).join('')}</div></section>`;
-  }
   if (p === PATHS.heavenHell) pre += `<section class="section">${secHead('ขั้วอำนาจแห่งนรก')}<div class="grid lg">${HELL.map(t => `<a class="card text" href="#${t[3]}"><span class="badge red">${t[2]}</span><div class="h3" style="margin-top:12px">${t[0]}</div><p>${t[1]}</p></a>`).join('')}</div></section>`;
   if (p === PATHS.plan) {
     secs = secs.filter(s => !(s.length === 1 && s[0].t === 'h' && /TIMELINE/i.test(s[0].x)));
